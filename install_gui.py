@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-import subprocess
+from brew import fetch_casks_from_brew
 
 class SetupApp:
     def __init__(self, root):
@@ -56,7 +56,7 @@ class SetupApp:
         typed = self.search_var.get().strip()
         if typed:
             self.root.config(cursor="wait")
-            casks = self.fetch_casks_from_brew(typed)
+            casks = fetch_casks_from_brew(typed)
             self.root.config(cursor="")
         else:
             casks = []
@@ -86,15 +86,7 @@ class SetupApp:
         for cask in selected_casks:
             tk.Label(self.selected_casks_frame, text=cask).pack()
 
-    def fetch_casks_from_brew(self, query):
-        command = ["brew", "search", query]
-        try:
-            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
-            casks = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-            return casks
-        except subprocess.CalledProcessError as e:
-            print(f"Error fetching casks: {e}")
-            return []
+
 
 if __name__ == "__main__":
     root = tk.Tk()
