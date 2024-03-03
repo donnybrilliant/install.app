@@ -2,6 +2,9 @@ import tkinter as tk
 from tkinter import ttk
 from fetch import fetch_homebrew_data
 from search import search_packages
+import subprocess
+import threading
+import sys
 
 
 class SetupApp:
@@ -40,9 +43,92 @@ class SetupApp:
         button_frame.grid(row=1, column=0, sticky="e")
 
         # Add a continue button to the frame
-        continue_button = ttk.Button(button_frame, text="Continue", command=lambda: print(self.selected_packages))
+        continue_button = ttk.Button(button_frame, text="Continue", command=self.install_packages)
         continue_button.pack(side="right", padx=10, pady=10)
-        
+
+
+    def install_packages(self):
+        self.clear_widgets()
+
+        # Create a temporary Frame to get the default background color
+        temp_frame = tk.Frame(self.root)
+        default_bg_color = temp_frame.cget("bg")
+        temp_frame.destroy()
+
+        # Setup a Text widget to display the installation process output
+        self.info_process = tk.Text(self.root, state='normal', height=15, width=50,
+                                    bd=0, bg=default_bg_color, wrap="word")  # Set background color
+
+        # Make the Text widget read-only
+        self.make_text_read_only(self.info_process)
+
+        self.info_process.pack(pady=10, padx=10, expand=True, fill="both")
+
+        # Run the entire installation process in a new thread
+        threading.Thread(target=self.run_installation_commands).start()
+
+
+    def make_text_read_only(self, text_widget):
+        def on_key_press(event):
+            """Prevent text modification by intercepting key presses."""
+            if event.keysym not in ("Up", "Down", "Left", "Right", "Copy", "Cut", "Paste"):
+                return "break"  # Prevents the event from being processed further
+
+        text_widget.bind("<Key>", on_key_press)
+        text_widget.bind("<Button-1>", lambda event: "break")  # Prevent text selection with mouse
+
+
+    def request_sudo_permission(self):
+        try:
+            # Request sudo permission via GUI
+            subprocess.run(["osascript", "-e", 'do shell script "sudo -v" with administrator privileges'], check=True)
+            return True
+        except subprocess.CalledProcessError:
+            print("Failed to obtain sudo permissions.")
+            return False
+
+    def run_helper_script(self, script_path):
+        # Clear the GUI text area first
+        self.info_process.config(state='normal')
+        self.info_process.delete('1.0', tk.END)
+
+        process = subprocess.Popen(["/bin/bash", script_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1)
+
+        # Poll process for new output until finished
+        while True:
+            nextline = process.stdout.readline()
+            if nextline == '' and process.poll() is not None:
+                break
+            sys.stdout.write(nextline)
+            sys.stdout.flush()
+
+            # Update GUI with the output
+            self.info_process.insert(tk.END, nextline)
+            self.info_process.see(tk.END)
+            self.info_process.update_idletasks()  # Update the text area
+
+
+        exitCode = process.returncode
+        if (exitCode == 0):
+            self.info_process.insert(tk.END, "\nProcess finished successfully.")
+        else:
+            self.info_process.insert(tk.END, "\nProcess finished with errors.")
+
+
+
+    def run_installation_commands(self):
+        if self.request_sudo_permission():
+            script_path = "./install.sh"  # Update this path
+            self.run_helper_script(script_path)
+        else:
+            print("Sudo permission was not granted.")
+
+  
+
+
+
+
+
 
     def setup_all_tab(self):
         self.all_tab = ttk.Frame(self.notebook)
