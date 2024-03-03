@@ -49,12 +49,13 @@ class SetupApp:
         self.result_canvas.configure(yscrollcommand=self.result_scrollbar.set)
 
         self.scrollable_result_frame = ttk.Frame(self.result_canvas)
-        self.result_canvas.create_window((0, 0), window=self.scrollable_result_frame, anchor="nw")
+        self.result_canvas.create_window((0, 0), window=self.scrollable_result_frame, anchor="nw", width=self.result_canvas.winfo_reqwidth())
 
         self.result_canvas.pack(side="left", fill="both", expand=True)
         self.result_scrollbar.pack(side="right", fill="y")
 
         self.result_frame.bind("<Configure>", lambda e: self.result_canvas.configure(scrollregion=self.result_canvas.bbox("all")))
+        self.result_canvas.bind("<Configure>", self.on_canvas_configure)
 
         # Right side for info display, taking up the remaining space
         self.info_text = tk.Text(self.all_tab, state="disabled", wrap="word")
@@ -64,6 +65,11 @@ class SetupApp:
         self.result_frame.pack_configure(fill="y", expand=False)
         self.info_text.pack_configure(fill="both", expand=True)
 
+
+    def on_canvas_configure(self, event):
+        # Set the scrollregion and the width of the scrollable_result_frame to fill the canvas
+        self.result_canvas.itemconfig("all", width=event.width)
+        self.result_canvas.configure(scrollregion=self.result_canvas.bbox("all"))
 
     def setup_selected_tab(self):
         self.selected_tab = ttk.Frame(self.notebook)
@@ -106,21 +112,31 @@ class SetupApp:
         for widget in self.scrollable_result_frame.winfo_children():
             widget.destroy()
 
+
         for pkg in results:
             result_frame = ttk.Frame(self.scrollable_result_frame, cursor="hand2")
             result_frame.pack(fill="x", expand=True)
+            result_frame.bind("<Button-1>", lambda e, p=pkg['name']: self.display_package_info(p))
 
             var = tk.BooleanVar()
             chk = tk.Checkbutton(result_frame, variable=var, cursor="cross", command=lambda p=pkg, v=var: self.toggle_package_selection(p['name'], v))
-            chk.pack(side="left")
+            chk.pack(side="left", anchor="w", padx=2)
 
-            label = tk.Label(result_frame, text=pkg['name'])
-            label.pack(side="left")  # Make the label fill the rest of the line
+            label = tk.Label(result_frame, text=pkg['name'], anchor="w")
+            label.pack(side="left", fill="x", expand=True, padx=2)
+            # Bind the label to the same function for consistency
             label.bind("<Button-1>", lambda e, p=pkg['name']: self.display_package_info(p))
 
             # Add a badge for the package type
-            badge = tk.Label(result_frame, text=pkg['type'], font=("Arial", 8))
-            badge.pack(side="right")
+            badge = tk.Label(result_frame, text=pkg['type'], font=("Arial", 8), anchor="e")
+            badge.pack(side="right", padx=2)
+            badge.bind("<Button-1>", lambda e, p=pkg['name']: self.display_package_info(p))
+
+
+            # No need for these binds since the frame's bind will handle it
+            # chk.bind("<Button-1>", lambda e, p=pkg['name']: self.display_package_info(p))
+            # badge.bind("<Button-1>", lambda e, p=pkg['name']: self.display_package_info(p))
+
 
          
 
