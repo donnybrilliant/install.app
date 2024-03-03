@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, simpledialog
 from fetch import fetch_homebrew_data, update_install_script_with_homebrew_commands
-from search import search_packages
+from utils import search_packages
 import subprocess
 import threading
 import sys
