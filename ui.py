@@ -18,16 +18,30 @@ class SetupApp:
     def show_welcome_screen(self):
         self.clear_widgets()
 
-        tk.Label(self.root, text="Welcome to the macOS Setup GUI", font=("Arial", 14)).pack(pady=20)
-        tk.Button(self.root, text="Continue", command=self.setup_search).pack()
+        label = tk.Label(self.root, text="Welcome to the macOS Setup GUI", font=("Arial", 14))
+        label.place(relx=0.5, rely=0.4, anchor='center')  # Adjusted rely
+
+        button = tk.Button(self.root, text="Continue", command=self.setup_search)
+        button.place(relx=0.5, rely=0.6, anchor='center')  # Adjusted rely
 
     def setup_search(self):
         self.clear_widgets()
-   
+
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+
         self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill="both", expand=True)
+        self.notebook.grid(row=0, column=0, sticky="nsew")
         self.setup_all_tab()
         self.setup_selected_tab()
+
+        # Create a frame for the continue button
+        button_frame = ttk.Frame(self.root)
+        button_frame.grid(row=1, column=0, sticky="e")
+
+        # Add a continue button to the frame
+        continue_button = ttk.Button(button_frame, text="Continue", command=lambda: print(self.selected_packages))
+        continue_button.pack(side="right", padx=10, pady=10)
         
 
     def setup_all_tab(self):
@@ -43,6 +57,7 @@ class SetupApp:
         # Left side for the scrollable result list, taking up 30% of the width
         self.result_frame = ttk.Frame(self.all_tab)
         self.result_frame.pack(side="left", fill="y", expand=False)
+        
 
         self.result_canvas = tk.Canvas(self.result_frame, width=180)  # Set an approximate width
         self.result_scrollbar = ttk.Scrollbar(self.result_frame, orient="vertical", command=self.result_canvas.yview)
@@ -57,9 +72,18 @@ class SetupApp:
         self.result_frame.bind("<Configure>", lambda e: self.result_canvas.configure(scrollregion=self.result_canvas.bbox("all")))
         self.result_canvas.bind("<Configure>", self.on_canvas_configure)
 
+
+
         # Right side for info display, taking up the remaining space
         self.info_text = tk.Text(self.all_tab, state="disabled", wrap="word")
         self.info_text.pack(side="left", fill="both", expand=True)
+
+        # Insert the initial text
+        self.info_text.config(state='normal')
+        self.info_text.insert('end', "Search Homebrew casks and formulae.\nSelect packages to install.")
+        self.info_text.config(state='disabled')
+
+
 
         # Adjust the packing of the result frame and info text to control their widths
         self.result_frame.pack_configure(fill="y", expand=False)
@@ -90,6 +114,15 @@ class SetupApp:
 
     def perform_search(self):
         query = self.search_var.get().strip().lower()
+
+        # If the query is less than 2 characters, display a message
+        if len(query) < 2:
+            self.info_text.config(state='normal')
+            self.info_text.delete('1.0', 'end')
+            self.info_text.insert('end', "Search Homebrew casks and formulae.\nSelect packages to install.")
+            self.info_text.config(state='disabled')
+            return
+
         results = search_packages(self.packages_data, query)
         self.display_search_results(results)
 
@@ -131,16 +164,6 @@ class SetupApp:
             badge = tk.Label(result_frame, text=pkg['type'], font=("Arial", 8), anchor="e")
             badge.pack(side="right", padx=2)
             badge.bind("<Button-1>", lambda e, p=pkg['name']: self.display_package_info(p))
-
-
-            # No need for these binds since the frame's bind will handle it
-            # chk.bind("<Button-1>", lambda e, p=pkg['name']: self.display_package_info(p))
-            # badge.bind("<Button-1>", lambda e, p=pkg['name']: self.display_package_info(p))
-
-
-         
-
-
 
     def display_package_info(self, package_name):
 
