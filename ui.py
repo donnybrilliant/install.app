@@ -11,6 +11,8 @@ class SetupApp:
         self.root.geometry("600x400")
 
         self.selected_packages = set()  # Track selected packages
+        # Fetch and store the package data from Homebrew
+        self.packages_data = fetch_homebrew_data()
         self.show_welcome_screen()
 
     def show_welcome_screen(self):
@@ -23,12 +25,12 @@ class SetupApp:
 
     def setup_search(self):
         self.clear_widgets()
-        # Fetch and store the package data from Homebrew
-        self.packages_data = fetch_homebrew_data()
+   
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill="both", expand=True)
         self.setup_all_tab()
         self.setup_selected_tab()
+        
 
     def setup_all_tab(self):
         self.all_tab = ttk.Frame(self.notebook)
@@ -93,10 +95,10 @@ class SetupApp:
             if package['name'].lower() == package_name.lower():
                 # Construct a detailed info string (customize as needed)
                 info = f"Name: {package['name']}\n"
-                info += f"Description: {package.get('desc', 'No description available')}\n"
-                info += f"Homepage: {package.get('homepage', 'No homepage available')}\n"
-                info += f"License: {package.get('license', 'No license information available')}\n"
-                info += "Version: Not available"  # Adjust according to your data structure if versions are available
+                info += f"Description: {package.get('desc')}\n"
+                info += f"Homepage: {package.get('homepage')}\n"
+                info += f"License: {package.get('license')}\n"
+                info += f"Version: {package.get('stable_version')}\n"
                 return info
         return "Package information not found."
 
@@ -106,21 +108,24 @@ class SetupApp:
             widget.destroy()
 
         for pkg in results:
-            result_frame = ttk.Frame(self.scrollable_result_frame)
+            result_frame = ttk.Frame(self.scrollable_result_frame, cursor="hand2")
             result_frame.pack(fill="x", expand=True)
 
             var = tk.BooleanVar()
-            chk = tk.Checkbutton(result_frame, variable=var, command=lambda p=pkg, v=var: self.toggle_package_selection(p['name'], v))
+            chk = tk.Checkbutton(result_frame, variable=var, cursor="cross", command=lambda p=pkg, v=var: self.toggle_package_selection(p['name'], v))
             chk.pack(side="left")
 
-            label = tk.Label(result_frame, text=pkg['name'], cursor="hand2")
-            label.pack(side="left", fill="x", expand=True)
+            label = tk.Label(result_frame, text=pkg['name'])
+            label.pack(side="left")  # Make the label fill the rest of the line
             label.bind("<Button-1>", lambda e, p=pkg['name']: self.display_package_info(p))
+
+            # Make the whole frame clickable
+            result_frame.bind("<Button-1>", lambda e, p=pkg['name']: self.display_package_info(p))
 
 
 
     def display_package_info(self, package_name):
-        # Simulate fetching package info. Replace this with actual fetch logic.
+
         package_info = self.fetch_package_info(package_name)
         self.info_text.config(state="normal")  # Enable text widget to modify its content
         self.info_text.delete("1.0", tk.END)  # Clear current content
