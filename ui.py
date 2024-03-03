@@ -118,18 +118,48 @@ class SetupApp:
 
 
 
+    def generate_homebrew_install_commands(self):
+        # Lists to hold selected formulae and casks
+        selected_formulae = [package for package, package_type in self.selected_packages.items() if package_type == 'formulae']
+        selected_casks = [package for package, package_type in self.selected_packages.items() if package_type == 'cask']
+
+        # Generate a single command for installing all formulae, and another for all casks
+        formulae_install_command = f"brew install {' '.join(selected_formulae)}" if selected_formulae else ""
+        cask_install_command = f"brew install --cask {' '.join(selected_casks)}" if selected_casks else ""
+
+        # Combine the commands into a single script section, separating them by a newline if both are present
+        script_section = "\n".join(filter(None, [formulae_install_command, cask_install_command]))
+        return script_section
+    
+    def update_install_script_with_homebrew_commands(self):
+        homebrew_install_commands = self.generate_homebrew_install_commands()
+        placeholder = "#BREWPACKAGES#"
+
+        with open("./install_template.sh", "r") as template_file:
+             script_content = template_file.read()
+
+        # Replace the placeholder with the generated Homebrew installation commands
+        updated_script_content = script_content.replace(placeholder, homebrew_install_commands)
+
+        with open("./install.sh", "w") as script_file:
+            script_file.write(updated_script_content)
+
     def run_installation_commands(self):
         self.root.after(0, self.ask_for_sudo_password)
         self.password_entered.wait()  # Wait until the password is entered
 
         if self.sudo_password:
             print(self.selected_packages)
-            script_path = "./install.sh"  # Update this path
+            # Update the install.sh script with the Homebrew installation commands at the placeholder
+            self.update_install_script_with_homebrew_commands()
+
+            script_path = "./install.sh"  # Use the updated install.sh path
             self.run_helper_script(script_path)
             continue_button = ttk.Button(self.button_frame, text="Reboot")
             continue_button.pack(side="right")
         else: 
             self.info_process.insert(tk.END, "Failed to authorize sudo. Aborting process.")
+
 
     def setup_all_tab(self):
         self.all_tab = ttk.Frame(self.notebook)
