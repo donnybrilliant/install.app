@@ -6,7 +6,17 @@ import subprocess
 import threading
 import sys
 from tkinter import simpledialog
+import tempfile
+import os
 
+def get_resource_path(relative_path):
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+        
+    return os.path.join(base_path, relative_path)
 
 class SetupApp:
     def __init__(self, root):
@@ -118,6 +128,7 @@ class SetupApp:
 
 
 
+
     def generate_homebrew_install_commands(self):
         # Lists to hold selected formulae and casks
         selected_formulae = [package for package, package_type in self.selected_packages.items() if package_type == 'formulae']
@@ -131,31 +142,48 @@ class SetupApp:
         script_section = "\n".join(filter(None, [formulae_install_command, cask_install_command]))
         return script_section
     
+   
+
     def update_install_script_with_homebrew_commands(self):
         homebrew_install_commands = self.generate_homebrew_install_commands()
         placeholder = "#BREWPACKAGES#"
 
-        with open("./install_template.sh", "r") as template_file:
-             script_content = template_file.read()
+        template_path = get_resource_path("install.sh")
+
+        # Read the template
+        with open(template_path, "r") as template_file:
+            script_content = template_file.read()
 
         # Replace the placeholder with the generated Homebrew installation commands
         updated_script_content = script_content.replace(placeholder, homebrew_install_commands)
 
-        with open("./install.sh", "w") as script_file:
+        # Write to a temporary file instead
+        temp_dir = tempfile.gettempdir()
+        install_script_path = os.path.join(temp_dir, "install222.sh")
+        with open(install_script_path, "w") as script_file:
             script_file.write(updated_script_content)
+
+        # Now, `install_script_path` contains the path to the updated script in a writable location
+        return install_script_path
+
 
     def run_installation_commands(self):
         self.root.after(0, self.ask_for_sudo_password)
         self.password_entered.wait()  # Wait until the password is entered
 
         if self.sudo_password:
-            print(self.selected_packages)
-            # Update the install.sh script with the Homebrew installation commands at the placeholder
-            self.update_install_script_with_homebrew_commands()
-
-            script_path = "./install.sh"  # Use the updated install.sh path
-            self.run_helper_script(script_path)
-            continue_button = ttk.Button(self.button_frame, text="Reboot")
+            # Generate and retrieve the path of the updated temporary script
+            install_script_path = self.update_install_script_with_homebrew_commands()
+            # Execute the temporary script
+            self.run_helper_script(install_script_path)
+            continue_button = ttk.Button(self.button_frame, text="Reboot", command=lambda: subprocess.Popen(
+                f"echo {self.sudo_password} | sudo -S reboot", 
+                shell=True, 
+                stdin=subprocess.PIPE, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE, 
+                text=True
+            ))
             continue_button.pack(side="right")
         else: 
             self.info_process.insert(tk.END, "Failed to authorize sudo. Aborting process.")
