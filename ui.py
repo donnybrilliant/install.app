@@ -5,6 +5,7 @@ from search import search_packages
 import subprocess
 import threading
 import sys
+from tkinter import simpledialog
 
 
 class SetupApp:
@@ -12,6 +13,8 @@ class SetupApp:
         self.root = root
         self.root.title("install.sh")
         self.root.geometry("600x400")
+        self.password_entered = threading.Event()
+        self.sudo_password = None
 
         self.selected_packages = set()  # Track selected packages
         # Fetch and store the package data from Homebrew
@@ -47,9 +50,11 @@ class SetupApp:
         continue_button.pack(side="right", padx=10, pady=10)
 
 
+
     def install_packages(self):
         self.clear_widgets()
-  
+        
+
         # Create a temporary Frame to get the default background color
         temp_frame = tk.Frame(self.root)
         default_bg_color = temp_frame.cget("bg")
@@ -59,46 +64,30 @@ class SetupApp:
         self.info_process = tk.Text(self.root, state='normal', height=15, width=50,
                                     bd=0, bg=default_bg_color, wrap="word")  # Set background color
 
-        # Make the Text widget read-only
-        self.make_text_read_only(self.info_process)
         # Pack the Text widget to fill the entire window
         self.info_process.pack(pady=10, padx=10, expand=True, fill="both")
-        self.info_process.insert(tk.END, "Please enter your root password to continue.")
+
+
         # Create a frame for the continue button
         self.button_frame = ttk.Frame(self.root)
         self.button_frame.pack(side="bottom", fill="x", padx=10, pady=10)
 
-       
-
         # Run the entire installation process in a new thread
         threading.Thread(target=self.run_installation_commands).start()
 
-
-    def make_text_read_only(self, text_widget):
-        def on_key_press(event):
-            """Prevent text modification by intercepting key presses."""
-            if event.keysym not in ("Up", "Down", "Left", "Right", "Copy", "Cut", "Paste"):
-                return "break"  # Prevents the event from being processed further
-
-        text_widget.bind("<Key>", on_key_press)
-        text_widget.bind("<Button-1>", lambda event: "break")  # Prevent text selection with mouse
+    def ask_for_sudo_password(self):
+        # This method will be run in the main thread to ask for the sudo password
+        self.sudo_password = simpledialog.askstring("Password", "Enter your sudo password:", show='*', parent=self.root)
+        self.password_entered.set()
 
 
-    def request_sudo_permission(self):
-        try:
-            # Request sudo permission via GUI
-            subprocess.run(["osascript", "-e", 'do shell script "sudo -v" with administrator privileges'], check=True)
-            return True
-        except subprocess.CalledProcessError:
-            print("Failed to obtain sudo permissions.")
-            return False
 
     def run_helper_script(self, script_path):
         # Clear the GUI text area first
         self.info_process.config(state='normal')
         self.info_process.delete('1.0', tk.END)
 
-        process = subprocess.Popen(["/bin/bash", script_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1)
+        process = subprocess.Popen(["/bin/bash", script_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1)
 
         # Poll process for new output until finished
         while True:
@@ -113,29 +102,33 @@ class SetupApp:
             self.info_process.see(tk.END)
             self.info_process.update_idletasks()  # Update the text area
 
+            # If the script is waiting for user input, send a newline character
+            if "Press RETURN/ENTER to continue or any other key to abort" in nextline:
+                process.stdin.write('\n')
+                process.stdin.flush()
 
         exitCode = process.returncode
         if (exitCode == 0):
-                         # Add a continue button to the frame
-
-            self.info_process.insert(tk.END, "\nProcess finished successfully.")
-        else:
-            self.info_process.insert(tk.END, "\nProcess finished with errors.")
+            # Add a continue button to the frame
+            if (exitCode == 0):
+        
+                self.info_process.insert(tk.END, "\nProcess finished successfully.")
+            else:
+                self.info_process.insert(tk.END, "\nProcess finished with errors.")
 
 
 
     def run_installation_commands(self):
-        if self.request_sudo_permission():
+        self.root.after(0, self.ask_for_sudo_password)
+        self.password_entered.wait()  # Wait until the password is entered
+
+        if self.sudo_password:
             script_path = "./install.sh"  # Update this path
             self.run_helper_script(script_path)
             continue_button = ttk.Button(self.button_frame, text="Reboot")
             continue_button.pack(side="right")
-
-        else:
-            print("Sudo permission was not granted.")
-            self.info_process.insert(tk.END, "\nSudo permission was not granted.")
-            continue_button = ttk.Button(self.button_frame, text="Try Again", command=self.install_packages)
-            continue_button.pack(side="right")
+        else: 
+            self.info_process.insert(tk.END, "Failed to authorize sudo. Aborting process.")
 
     def setup_all_tab(self):
         self.all_tab = ttk.Frame(self.notebook)
