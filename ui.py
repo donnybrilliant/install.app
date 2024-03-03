@@ -49,7 +49,7 @@ class SetupApp:
 
     def install_packages(self):
         self.clear_widgets()
-
+  
         # Create a temporary Frame to get the default background color
         temp_frame = tk.Frame(self.root)
         default_bg_color = temp_frame.cget("bg")
@@ -61,9 +61,10 @@ class SetupApp:
 
         # Make the Text widget read-only
         self.make_text_read_only(self.info_process)
-
+        # Pack the Text widget to fill the entire window
         self.info_process.pack(pady=10, padx=10, expand=True, fill="both")
-
+        self.info_process.insert(tk.END, "Please enter your root password to continue.")
+        # Create a frame for the continue button
         self.button_frame = ttk.Frame(self.root)
         self.button_frame.pack(side="bottom", fill="x", padx=10, pady=10)
 
@@ -127,18 +128,14 @@ class SetupApp:
         if self.request_sudo_permission():
             script_path = "./install.sh"  # Update this path
             self.run_helper_script(script_path)
-            continue_button = ttk.Button(self.button_frame, text="Continue")
+            continue_button = ttk.Button(self.button_frame, text="Reboot")
             continue_button.pack(side="right")
 
         else:
             print("Sudo permission was not granted.")
-
-  
-
-
-
-
-
+            self.info_process.insert(tk.END, "\nSudo permission was not granted.")
+            continue_button = ttk.Button(self.button_frame, text="Try Again", command=self.install_packages)
+            continue_button.pack(side="right")
 
     def setup_all_tab(self):
         self.all_tab = ttk.Frame(self.notebook)
