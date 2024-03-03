@@ -1,22 +1,11 @@
 import tkinter as tk
-from tkinter import ttk
-from fetch import fetch_homebrew_data
+from tkinter import ttk, simpledialog
+from fetch import fetch_homebrew_data, update_install_script_with_homebrew_commands
 from search import search_packages
 import subprocess
 import threading
 import sys
-from tkinter import simpledialog
-import tempfile
-import os
 
-def get_resource_path(relative_path):
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except AttributeError:
-        base_path = os.path.abspath(".")
-        
-    return os.path.join(base_path, relative_path)
 
 class SetupApp:
     def __init__(self, root):
@@ -64,15 +53,13 @@ class SetupApp:
     def install_packages(self):
         self.clear_widgets()
         
-
         # Create a temporary Frame to get the default background color
         temp_frame = tk.Frame(self.root)
         default_bg_color = temp_frame.cget("bg")
         temp_frame.destroy()
 
         # Setup a Text widget to display the installation process output
-        self.info_process = tk.Text(self.root, state='normal', height=15, width=50,
-                                    bd=0, bg=default_bg_color, wrap="word")  # Set background color
+        self.info_process = tk.Text(self.root, state='normal', height=15, width=50, bd=0, bg=default_bg_color, wrap="word")  # Set background color
 
         # Pack the Text widget to fill the entire window
         self.info_process.pack(pady=10, padx=10, expand=True, fill="both")
@@ -127,53 +114,13 @@ class SetupApp:
                 self.info_process.insert(tk.END, "\nProcess finished with errors.")
 
 
-
-
-    def generate_homebrew_install_commands(self):
-        # Lists to hold selected formulae and casks
-        selected_formulae = [package for package, package_type in self.selected_packages.items() if package_type == 'formulae']
-        selected_casks = [package for package, package_type in self.selected_packages.items() if package_type == 'cask']
-
-        # Generate a single command for installing all formulae, and another for all casks
-        formulae_install_command = f"brew install {' '.join(selected_formulae)}" if selected_formulae else ""
-        cask_install_command = f"brew install --cask {' '.join(selected_casks)}" if selected_casks else ""
-
-        # Combine the commands into a single script section, separating them by a newline if both are present
-        script_section = "\n".join(filter(None, [formulae_install_command, cask_install_command]))
-        return script_section
-    
-   
-
-    def update_install_script_with_homebrew_commands(self):
-        homebrew_install_commands = self.generate_homebrew_install_commands()
-        placeholder = "#BREWPACKAGES#"
-
-        template_path = get_resource_path("install.sh")
-
-        # Read the template
-        with open(template_path, "r") as template_file:
-            script_content = template_file.read()
-
-        # Replace the placeholder with the generated Homebrew installation commands
-        updated_script_content = script_content.replace(placeholder, homebrew_install_commands)
-
-        # Write to a temporary file instead
-        temp_dir = tempfile.gettempdir()
-        install_script_path = os.path.join(temp_dir, "install222.sh")
-        with open(install_script_path, "w") as script_file:
-            script_file.write(updated_script_content)
-
-        # Now, `install_script_path` contains the path to the updated script in a writable location
-        return install_script_path
-
-
     def run_installation_commands(self):
         self.root.after(0, self.ask_for_sudo_password)
         self.password_entered.wait()  # Wait until the password is entered
 
         if self.sudo_password:
             # Generate and retrieve the path of the updated temporary script
-            install_script_path = self.update_install_script_with_homebrew_commands()
+            install_script_path = update_install_script_with_homebrew_commands(self.selected_packages)
             # Execute the temporary script
             self.run_helper_script(install_script_path)
             continue_button = ttk.Button(self.button_frame, text="Reboot", command=lambda: subprocess.Popen(
@@ -187,6 +134,8 @@ class SetupApp:
             continue_button.pack(side="right")
         else: 
             self.info_process.insert(tk.END, "Failed to authorize sudo. Aborting process.")
+            continue_button = ttk.Button(self.button_frame, text="Try Again", command=self.install_packages)
+            continue_button.pack(side="right")
 
 
     def setup_all_tab(self):
@@ -217,8 +166,6 @@ class SetupApp:
         self.result_frame.bind("<Configure>", lambda e: self.result_canvas.configure(scrollregion=self.result_canvas.bbox("all")))
         self.result_canvas.bind("<Configure>", self.on_canvas_configure)
 
-
-
         # Right side for info display, taking up the remaining space
         self.info_text = tk.Text(self.all_tab, state="disabled", wrap="word")
         self.info_text.pack(side="left", fill="both", expand=True)
@@ -227,8 +174,6 @@ class SetupApp:
         self.info_text.config(state='normal')
         self.info_text.insert('end', "Search Homebrew casks and formulae.\nSelect packages to install.")
         self.info_text.config(state='disabled')
-
-
 
         # Adjust the packing of the result frame and info text to control their widths
         self.result_frame.pack_configure(fill="y", expand=False)
@@ -271,7 +216,7 @@ class SetupApp:
         results = search_packages(self.packages_data, query)
         self.display_search_results(results)
 
-    def fetch_package_info(self, package_name):
+    def get_package_info(self, package_name):
         # Search for the package dictionary by name
         for package in self.packages_data:
             if package['name'].lower() == package_name.lower():
@@ -312,7 +257,7 @@ class SetupApp:
 
     def display_package_info(self, package_name):
 
-        package_info = self.fetch_package_info(package_name)
+        package_info = self.get_package_info(package_name)
         self.info_text.config(state="normal")  # Enable text widget to modify its content
         self.info_text.delete("1.0", tk.END)  # Clear current content
         self.info_text.insert(tk.END, package_info)  # Insert new package info
