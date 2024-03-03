@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from fetch import fetch_homebrew_data
+from search import search_packages
 
 
 class SetupApp:
@@ -81,15 +82,9 @@ class SetupApp:
         for widget in self.root.winfo_children():
             widget.destroy()
 
-    def search_packages(self, query):
-        # Ensure query is a lower case string for case-insensitive comparison
-        query = query.lower()
-        # Filter packages based on the query matching any part of the package name or description
-        return [pkg for pkg in self.packages_data if query in pkg['name'].lower() or query in (pkg.get('desc') or '').lower()]
-
     def perform_search(self):
         query = self.search_var.get().strip().lower()
-        results = self.search_packages(query)
+        results = search_packages(self.packages_data, query)
         self.display_search_results(results)
 
     def fetch_package_info(self, package_name):
@@ -144,7 +139,3 @@ class SetupApp:
         for package in sorted(self.selected_packages):
             self.selected_listbox.insert(tk.END, package)
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = SetupApp(root)
-    root.mainloop()
