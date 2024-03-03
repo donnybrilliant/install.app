@@ -64,6 +64,11 @@ class SetupApp:
 
         self.info_process.pack(pady=10, padx=10, expand=True, fill="both")
 
+        self.button_frame = ttk.Frame(self.root)
+        self.button_frame.pack(side="bottom", fill="x", padx=10, pady=10)
+
+       
+
         # Run the entire installation process in a new thread
         threading.Thread(target=self.run_installation_commands).start()
 
@@ -110,6 +115,8 @@ class SetupApp:
 
         exitCode = process.returncode
         if (exitCode == 0):
+                         # Add a continue button to the frame
+
             self.info_process.insert(tk.END, "\nProcess finished successfully.")
         else:
             self.info_process.insert(tk.END, "\nProcess finished with errors.")
@@ -120,6 +127,9 @@ class SetupApp:
         if self.request_sudo_permission():
             script_path = "./install.sh"  # Update this path
             self.run_helper_script(script_path)
+            continue_button = ttk.Button(self.button_frame, text="Continue")
+            continue_button.pack(side="right")
+
         else:
             print("Sudo permission was not granted.")
 
