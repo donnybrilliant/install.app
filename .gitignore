@@ -3,6 +3,8 @@
 __pycache__/
 /build
 /dist
-main.spec
+*.spec
 .DS_Store
 *.log
+icon.png
+compile.sh
