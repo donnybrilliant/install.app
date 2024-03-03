@@ -21,8 +21,6 @@ class SetupApp:
         tk.Label(self.root, text="Welcome to the macOS Setup GUI", font=("Arial", 14)).pack(pady=20)
         tk.Button(self.root, text="Continue", command=self.setup_search).pack()
 
-
-
     def setup_search(self):
         self.clear_widgets()
    
@@ -98,12 +96,13 @@ class SetupApp:
                 info += f"Description: {package.get('desc')}\n"
                 info += f"Homepage: {package.get('homepage')}\n"
                 info += f"License: {package.get('license')}\n"
+                info += f"Type: {package['type']}\n"
                 info += f"Version: {package.get('stable_version')}\n"
                 return info
         return "Package information not found."
 
     def display_search_results(self, results):
-        # Clear current results
+    # Clear current results
         for widget in self.scrollable_result_frame.winfo_children():
             widget.destroy()
 
@@ -119,8 +118,11 @@ class SetupApp:
             label.pack(side="left")  # Make the label fill the rest of the line
             label.bind("<Button-1>", lambda e, p=pkg['name']: self.display_package_info(p))
 
-            # Make the whole frame clickable
-            result_frame.bind("<Button-1>", lambda e, p=pkg['name']: self.display_package_info(p))
+            # Add a badge for the package type
+            badge = tk.Label(result_frame, text=pkg['type'], font=("Arial", 8))
+            badge.pack(side="right")
+
+         
 
 
 
