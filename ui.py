@@ -16,7 +16,7 @@ class SetupApp:
         self.password_entered = threading.Event()
         self.sudo_password = None
 
-        self.selected_packages = set()  # Track selected packages
+        self.selected_packages = {}  # Track selected packages
         # Fetch and store the package data from Homebrew
         self.packages_data = fetch_homebrew_data()
         self.show_welcome_screen()
@@ -123,6 +123,7 @@ class SetupApp:
         self.password_entered.wait()  # Wait until the password is entered
 
         if self.sudo_password:
+            print(self.selected_packages)
             script_path = "./install.sh"  # Update this path
             self.run_helper_script(script_path)
             continue_button = ttk.Button(self.button_frame, text="Reboot")
@@ -238,7 +239,7 @@ class SetupApp:
             result_frame.bind("<Button-1>", lambda e, p=pkg['name']: self.display_package_info(p))
 
             var = tk.BooleanVar()
-            chk = tk.Checkbutton(result_frame, variable=var, cursor="cross", command=lambda p=pkg, v=var: self.toggle_package_selection(p['name'], v))
+            chk = tk.Checkbutton(result_frame, variable=var, cursor="cross", command=lambda p=pkg, v=var: self.toggle_package_selection(p, v))
             chk.pack(side="left", anchor="w", padx=2)
 
             label = tk.Label(result_frame, text=pkg['name'], anchor="w")
@@ -260,14 +261,18 @@ class SetupApp:
         self.info_text.config(state="disabled")  # Disable text widget to prevent user editing
 
     def toggle_package_selection(self, package, var):
+        package_name = package['name']
+        package_type = package['type']
         if var.get():
-            self.selected_packages.add(package)
+            self.selected_packages[package_name] = package_type
         else:
-            self.selected_packages.remove(package)
+            if package_name in self.selected_packages:
+                del self.selected_packages[package_name]
         self.update_selected_tab()
 
     def update_selected_tab(self):
         self.selected_listbox.delete(0, tk.END)
-        for package in sorted(self.selected_packages):
+        for package in sorted(self.selected_packages.keys()):
             self.selected_listbox.insert(tk.END, package)
+
 
