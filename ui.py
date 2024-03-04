@@ -99,10 +99,6 @@ class SetupApp:
             self.info_process.see(tk.END)
             self.info_process.update_idletasks()  # Update the text area
 
-            # If the script is waiting for user input, send a newline character
-            if "Press RETURN/ENTER to continue or any other key to abort" in nextline:
-                process.stdin.write('\n')
-                process.stdin.flush()
 
         exitCode = process.returncode
         if (exitCode == 0):

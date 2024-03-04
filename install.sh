@@ -9,7 +9,7 @@ softwareupdate --install-rosetta --agree-to-license # >/dev/null 2>&1
 # Install Homebrew
 
 echo "Installing Homebrew..."
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" # >/dev/null
+NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" # >/dev/null
 echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >>~/.zprofile
 eval "$(/opt/homebrew/bin/brew shellenv)"
 
