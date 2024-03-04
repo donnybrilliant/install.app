@@ -84,11 +84,11 @@ class SetupApp:
         self.info_process.config(state='normal')
         self.info_process.delete('1.0', tk.END)
 
+        
+
         process = subprocess.Popen(["/bin/bash", script_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1)
 
-         # Send the password to the subprocess
-        #process.stdin.write(self.sudo_password + "\n")
-        #process.stdin.flush()
+  
 
         # Poll process for new output until finished
         while True:
@@ -114,11 +114,29 @@ class SetupApp:
                 self.info_process.insert(tk.END, "\nProcess finished with errors.")
 
 
+
+    
     def run_installation_commands(self):
+        # Clear the button frame and the info_process text widget
+        for widget in self.button_frame.winfo_children():
+            widget.destroy()
+        self.info_process.delete('1.0', tk.END)
+
         self.root.after(0, self.ask_for_sudo_password)
         self.password_entered.wait()  # Wait until the password is entered
 
         if self.sudo_password:
+            # Run sudo -v with self.sudo_password
+            sudo_command = f"echo {self.sudo_password} | sudo -S -v"
+            process = subprocess.Popen(sudo_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            process.wait()  # Wait for the sudo -v command to finish
+
+            # Check if sudo -v was successful
+            if process.returncode != 0:
+                self.info_process.insert(tk.END, "Failed to authorize sudo. Aborting process.")
+                continue_button = ttk.Button(self.button_frame, text="Try Again", command=self.run_installation_commands)
+                continue_button.pack(side="right")
+                return
             # Generate and retrieve the path of the updated temporary script
             install_script_path = update_install_script_with_homebrew_commands(self.selected_packages)
             # Execute the temporary script
@@ -132,10 +150,8 @@ class SetupApp:
                 text=True
             ))
             continue_button.pack(side="right")
-        else: 
-            self.info_process.insert(tk.END, "Failed to authorize sudo. Aborting process.")
-            continue_button = ttk.Button(self.button_frame, text="Try Again", command=self.install_packages)
-            continue_button.pack(side="right")
+    
+
 
 
     def setup_all_tab(self):
