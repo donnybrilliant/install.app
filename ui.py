@@ -86,6 +86,10 @@ class SetupApp:
 
         process = subprocess.Popen(["/bin/bash", script_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1)
 
+         # Send the password to the subprocess
+        #process.stdin.write(self.sudo_password + "\n")
+        #process.stdin.flush()
+
         # Poll process for new output until finished
         while True:
             nextline = process.stdout.readline()
